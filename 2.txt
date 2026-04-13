@@ -1,1 +1,1 @@
-change 1 in pre-release not in master
+change 1 in pre-release not in main
