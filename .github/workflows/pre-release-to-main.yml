@@ -1,0 +1,35 @@
+name: Backmerge pre-release to main
+
+on:
+  push:
+    branches:
+      - pre-release
+
+jobs:
+  backmerge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.BACKMERGE_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.BACKMERGE_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Merge pre-release into main
+        run: |
+          git fetch origin pre-release
+          if ! git merge --no-ff origin/pre-release -m "Backmerge pre-release into main [skip ci]"; then
+            echo "::error::Merge conflict detected between pre-release and main. Aborting."
+            git merge --abort || true
+            exit 1
+          fi
+
+      - name: Push main
+        run: git push origin main
