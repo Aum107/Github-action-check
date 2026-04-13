@@ -1,0 +1,20 @@
+name: Dummy Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - pre-release
+      - release
+  push:
+    branches:
+      - main
+      - pre-release
+      - release
+
+jobs:
+  dummy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Always pass
+        run: echo "Dummy check passed"
