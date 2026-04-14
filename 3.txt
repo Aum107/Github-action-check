@@ -1,1 +1,1 @@
-change 3.txt after merging to pre-release
+change 3.txt not in master as a bufix
