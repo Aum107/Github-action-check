@@ -25,7 +25,7 @@ jobs:
       - name: Merge pre-release into main
         run: |
           git fetch origin pre-release
-          if ! git merge --no-ff origin/pre-release -m "Backmerge pre-release into main [skip ci]"; then
+          if ! git merge origin/pre-release; then
             echo "::error::Merge conflict detected between pre-release and main. Aborting."
             git merge --abort || true
             exit 1
