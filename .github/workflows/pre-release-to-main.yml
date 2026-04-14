@@ -25,8 +25,13 @@ jobs:
       - name: Merge pre-release into main
         run: |
           git fetch origin pre-release
-          if ! git merge origin/pre-release; then
-            echo "::error::Merge conflict detected between pre-release and main. Aborting."
+          if ! git merge origin/pre-release 2>&1; then
+            echo ""
+            echo "===== CONFLICTING FILES ====="
+            git diff --name-only --diff-filter=U
+            echo "=============================="
+            echo ""
+            echo "::error::Merge conflict detected between pre-release and main. Please resolve manually."
             git merge --abort || true
             exit 1
           fi

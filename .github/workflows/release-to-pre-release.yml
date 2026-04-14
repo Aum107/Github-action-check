@@ -25,8 +25,13 @@ jobs:
       - name: Merge release into pre-release
         run: |
           git fetch origin release
-          if ! git merge origin/release; then
-            echo "::error::Merge conflict detected between release and pre-release. Aborting."
+          if ! git merge origin/release 2>&1; then
+            echo ""
+            echo "===== CONFLICTING FILES ====="
+            git diff --name-only --diff-filter=U
+            echo "=============================="
+            echo ""
+            echo "::error::Merge conflict detected between release and pre-release. Please resolve manually."
             git merge --abort || true
             exit 1
           fi
