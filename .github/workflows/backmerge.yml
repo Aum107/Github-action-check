@@ -1,0 +1,52 @@
+name: Backmerge
+
+on:
+  push:
+    branches:
+      - pre-release
+      - release
+
+jobs:
+  backmerge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set branches
+        id: branches
+        run: |
+          if [ "${{ github.ref_name }}" = "release" ]; then
+            echo "source=release" >> $GITHUB_OUTPUT
+            echo "target=pre-release" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_name }}" = "pre-release" ]; then
+            echo "source=pre-release" >> $GITHUB_OUTPUT
+            echo "target=main" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branches.outputs.target }}
+          fetch-depth: 0
+          token: ${{ secrets.BACKMERGE_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.BACKMERGE_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Merge source into target
+        run: |
+          git fetch origin ${{ steps.branches.outputs.source }}
+          if ! git merge origin/${{ steps.branches.outputs.source }} 2>&1; then
+            echo ""
+            echo "===== CONFLICTING FILES ====="
+            git diff --name-only --diff-filter=U
+            echo "=============================="
+            echo ""
+            echo "::error::Merge conflict detected between ${{ steps.branches.outputs.source }} and ${{ steps.branches.outputs.target }}. Please resolve manually."
+            git merge --abort || true
+            exit 1
+          fi
+
+      - name: Push target
+        run: git push origin ${{ steps.branches.outputs.target }}

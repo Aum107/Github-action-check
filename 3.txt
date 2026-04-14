@@ -1,1 +1,1 @@
-change 3.txt not in master as a bufix
+change 3.txt in pre-release
