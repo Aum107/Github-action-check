@@ -35,18 +35,46 @@ jobs:
           git remote set-url origin https://x-access-token:${{ secrets.BACKMERGE_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Merge source into target
+        id: merge
         run: |
           git fetch origin ${{ steps.branches.outputs.source }}
           if ! git merge origin/${{ steps.branches.outputs.source }} 2>&1; then
             echo ""
             echo "===== CONFLICTING FILES ====="
-            git diff --name-only --diff-filter=U
+            conflicts=$(git diff --name-only --diff-filter=U)
+            echo "$conflicts"
             echo "=============================="
             echo ""
+            {
+              echo "conflicts<<EOF"
+              echo "$conflicts"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
             echo "::error::Merge conflict detected between ${{ steps.branches.outputs.source }} and ${{ steps.branches.outputs.target }}. Please resolve manually."
             git merge --abort || true
             exit 1
           fi
+
+      - name: Notify Flock on merge conflict
+        if: failure() && steps.merge.outcome == 'failure'
+        env:
+          FLOCK_WEBHOOK_URL: ${{ secrets.FLOCK_WEBHOOK_URL }}
+          SOURCE: ${{ steps.branches.outputs.source }}
+          TARGET: ${{ steps.branches.outputs.target }}
+          CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          message="❌ Backmerge failed: ${SOURCE} → ${TARGET}
+          Repo: ${REPO}
+          Reason: Merge conflict
+          Conflicting files:
+          ${CONFLICTS}
+          Run: ${RUN_URL}"
+          payload=$(jq -n --arg text "$message" '{text: $text}')
+          curl -X POST "$FLOCK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$payload"
 
       - name: Push target
         run: git push origin ${{ steps.branches.outputs.target }}
