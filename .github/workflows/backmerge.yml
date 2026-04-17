@@ -77,6 +77,7 @@ jobs:
           SOURCE: ${{ steps.branches.outputs.source }}
           TARGET: ${{ steps.branches.outputs.target }}
           CONFLICTS: ${{ steps.merge.outputs.conflicts }}
+          PR_URL: ${{ steps.merge.outputs.pr_url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REPO: ${{ github.repository }}
         run: |
@@ -85,6 +86,7 @@ jobs:
           Reason: Merge conflict
           Conflicting files:
           ${CONFLICTS}
+          Resolve conflicts and merge here: ${PR_URL}
           Run: ${RUN_URL}"
           payload=$(jq -n --arg text "$message" '{text: $text}')
           curl -X POST "$FLOCK_WEBHOOK_URL" \
