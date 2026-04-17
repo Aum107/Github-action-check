@@ -36,9 +36,13 @@ jobs:
 
       - name: Merge source into target
         id: merge
+        env:
+          GH_TOKEN: ${{ secrets.BACKMERGE_TOKEN }}
+          SOURCE: ${{ steps.branches.outputs.source }}
+          TARGET: ${{ steps.branches.outputs.target }}
         run: |
-          git fetch origin ${{ steps.branches.outputs.source }}
-          if ! git merge origin/${{ steps.branches.outputs.source }} 2>&1; then
+          git fetch origin "$SOURCE"
+          if ! git merge "origin/$SOURCE" 2>&1; then
             echo ""
             echo "===== CONFLICTING FILES ====="
             conflicts=$(git diff --name-only --diff-filter=U)
@@ -50,8 +54,19 @@ jobs:
               echo "$conflicts"
               echo "EOF"
             } >> "$GITHUB_OUTPUT"
-            echo "::error::Merge conflict detected between ${{ steps.branches.outputs.source }} and ${{ steps.branches.outputs.target }}. Please resolve manually."
             git merge --abort || true
+
+            pr_url=$(gh pr list --base "$TARGET" --head "$SOURCE" --state open --json url -q '.[0].url')
+            if [ -z "$pr_url" ]; then
+              pr_url=$(gh pr create \
+                --base "$TARGET" \
+                --head "$SOURCE" \
+                --title "Backmerge: $SOURCE → $TARGET (conflicts)" \
+                --body "Automated backmerge from \`$SOURCE\` to \`$TARGET\` failed due to merge conflicts. Please resolve the conflicts and merge this PR manually.")
+            fi
+            echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
+            echo "::error::Merge conflict between $SOURCE and $TARGET. Resolve via PR: $pr_url"
             exit 1
           fi
 
